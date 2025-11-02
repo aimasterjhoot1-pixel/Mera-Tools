@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output/
+
+# Production
+build/
+dist/
+*.local
+
+# Misc
+.DS_Store
+.env
+.env.local
+.env.production.local
+.env.development.local
+.vscode/
+.idea/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Backend
+backend/tmp/
+backend/uploads/
+backend/dist/
+
+# Frontend
+frontend/dist/
+frontend/.vite/
+
+# Playwright
+test-results/
+playwright-report/
+playwright/.cache/
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
