@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Mera Dost - PDF Toolkit
 
 A production-quality, fully functional web application for PDF/document manipulation - edit, convert, merge, split, compress, sign, redact, forms, and more.
@@ -230,3 +231,7 @@ See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.
 
 For issues and questions, please open an issue on GitHub.
 
+=======
+# Mera-Tools
+A Free Toolkits for all users
+>>>>>>> 6a71dfd2e41a0b8ffa78c3839ac39c36692742b6
