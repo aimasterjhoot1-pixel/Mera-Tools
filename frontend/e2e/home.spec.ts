@@ -6,8 +6,8 @@ test('homepage loads and displays tools', async ({ page }) => {
   // Check title
   await expect(page).toHaveTitle(/Mera Tool/);
 
-  // Check main heading
-  await expect(page.getByRole('heading', { name: /Mera Tool/i })).toBeVisible();
+  // Check main heading - use more specific selector to avoid strict mode violation
+  await expect(page.getByRole('heading', { name: /Mera Tool - PDF Toolkit/i })).toBeVisible();
 
   // Check tool links
   await expect(page.getByRole('link', { name: /Edit PDF/i }).first()).toBeVisible();
