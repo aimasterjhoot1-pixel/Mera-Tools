@@ -9,20 +9,22 @@ const router = express.Router();
  * GET /api/download/:fileId
  * Download a file by fileId
  */
-router.get('/:fileId', (req: Request, res: Response) => {
+router.get('/:fileId', (req: Request, res: Response): void => {
   try {
     const { fileId } = req.params;
     const metadataPath = path.join(TMP_DIR, `${fileId}.meta.json`);
 
     if (!fs.existsSync(metadataPath)) {
-      return res.status(404).json({ error: 'File not found' });
+      res.status(404).json({ error: 'File not found' });
+      return;
     }
 
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
     const filePath = metadata.filePath;
 
     if (!fs.existsSync(filePath)) {
-      return res.status(404).json({ error: 'File not found' });
+      res.status(404).json({ error: 'File not found' });
+      return;
     }
 
     // Set appropriate headers

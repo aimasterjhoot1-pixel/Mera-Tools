@@ -17,10 +17,10 @@ if (!fs.existsSync(TMP_DIR)) {
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (_req, _file, cb) => {
     cb(null, TMP_DIR);
   },
-  filename: (req, file, cb) => {
+  filename: (_req, file, cb) => {
     const fileId = uuidv4();
     const ext = path.extname(file.originalname);
     cb(null, `${fileId}${ext}`);
@@ -32,7 +32,7 @@ const upload = multer({
   limits: {
     fileSize: MAX_FILE_SIZE,
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     const allowedTypes = [
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -55,10 +55,11 @@ const upload = multer({
  * POST /api/upload
  * Upload a file and return fileId and metadata
  */
-router.post('/', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/', upload.single('file'), async (req: Request, res: Response): Promise<void> => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
     }
 
     const fileId = path.basename(req.file.filename, path.extname(req.file.filename));
@@ -99,10 +100,12 @@ router.post('/', upload.single('file'), async (req: Request, res: Response) => {
         type: req.file.mimetype,
       },
     });
+    return;
   } catch (error) {
     console.error('Upload error:', error);
     const message = error instanceof Error ? error.message : 'Upload failed';
     res.status(500).json({ error: message });
+    return;
   }
 });
 

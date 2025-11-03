@@ -18,7 +18,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Health check
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -36,7 +36,7 @@ app.get('/admin/stats', (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  res.json({
+  return res.json({
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     timestamp: new Date().toISOString(),
@@ -44,11 +44,11 @@ app.get('/admin/stats', (req, res) => {
 });
 
 // Error handling
-app.use((err: unknown, req: express.Request, res: express.Response, _next: express.NextFunction) => {
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Error:', err);
   const status = (err as { status?: number })?.status || 500;
   const message = (err instanceof Error ? err.message : 'Internal server error');
-  res.status(status).json({
+  return res.status(status).json({
     error: message,
   });
 });
