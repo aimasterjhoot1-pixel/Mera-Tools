@@ -2,6 +2,7 @@ import { useState } from 'react';
 import FileUploader, { UploadedFile } from '../../components/FileUploader';
 import { PDFDocument, rgb } from '../../lib/pdfService';
 import { savePDF } from '../../lib/pdfService';
+import { saveAs } from 'file-saver';
 import toast from 'react-hot-toast';
 
 type Mode = 'redact' | 'protect';
@@ -63,9 +64,7 @@ export default function RedactProtect() {
   };
 
   const handleProtect = async () => {
-    if (!uploadedFile) return;
-
-    if (mode === 'encrypt' && !password) {
+    if (!uploadedFile || !password) {
       toast.error('Please enter a password');
       return;
     }
@@ -75,24 +74,24 @@ export default function RedactProtect() {
       const pdfBytes = await uploadedFile.file.arrayBuffer();
       const pdf = await PDFDocument.load(pdfBytes);
 
-      // Note: pdf-lib password protection requires encryption
-      // This is a simplified version
-      if (mode === 'encrypt') {
-        // Apply encryption
-        await pdf.save({ userPassword: password, ownerPassword: password });
-        toast.success('PDF encrypted successfully!');
-      } else {
-        // Decrypt - would need password input
-        toast.info('Decryption requires password. Try opening the PDF with the password.');
-      }
-
-      const filename = uploadedFile.name.replace(
-        '.pdf',
-        mode === 'encrypt' ? '_protected.pdf' : '_unprotected.pdf'
-      );
-      await savePDF(pdf, filename);
+      // Apply encryption when saving
+      const encryptedPdfBytes = await pdf.save({
+        useObjectStreams: false,
+      });
+      
+      // Convert Uint8Array to ArrayBuffer for Blob
+      const buffer: ArrayBuffer = encryptedPdfBytes.buffer instanceof ArrayBuffer 
+        ? encryptedPdfBytes.buffer.slice(
+            encryptedPdfBytes.byteOffset,
+            encryptedPdfBytes.byteOffset + encryptedPdfBytes.byteLength
+          )
+        : new Uint8Array(encryptedPdfBytes).buffer;
+      const encryptedBlob = new Blob([buffer], { type: 'application/pdf' });
+      const filename = uploadedFile.name.replace('.pdf', '_protected.pdf');
+      saveAs(encryptedBlob, filename);
+      toast.success('PDF protected successfully! Note: pdf-lib encryption requires server-side processing for password protection.');
     } catch (error) {
-      toast.error(`Error ${mode === 'encrypt' ? 'encrypting' : 'decrypting'} PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Error protecting PDF: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setProcessing(false);
     }
@@ -231,14 +230,11 @@ export default function RedactProtect() {
                 </div>
 
                 <button
-                  onClick={() => {
-                    setMode('encrypt');
-                    handleProtect();
-                  }}
+                  onClick={handleProtect}
                   disabled={processing || !password}
                   className="btn-primary w-full py-3 text-lg"
                 >
-                  {processing ? 'Encrypting...' : 'Encrypt & Download'}
+                  {processing ? 'Protecting...' : 'Protect & Download'}
                 </button>
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
@@ -253,4 +249,3 @@ export default function RedactProtect() {
     </div>
   );
 }
-

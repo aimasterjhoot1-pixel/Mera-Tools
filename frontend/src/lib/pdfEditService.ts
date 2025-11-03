@@ -209,7 +209,25 @@ export class PDFEditor {
     if (!this.pdf) throw new Error('PDF not loaded');
 
     const pdfBytes = await this.pdf.save();
-    const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+    // Convert Uint8Array to ArrayBuffer slice for proper Blob creation
+    const buffer: ArrayBuffer = pdfBytes.buffer instanceof ArrayBuffer 
+      ? pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength)
+      : new Uint8Array(pdfBytes).buffer;
+    const blob = new Blob([buffer], { type: 'application/pdf' });
+    saveAs(blob, filename);
+  }
+
+  /**
+   * Save PDF
+   */
+  async save(filename: string): Promise<void> {
+    if (!this.pdf) throw new Error('PDF not loaded');
+    const pdfBytes = await this.pdf.save();
+    // Convert Uint8Array to ArrayBuffer for Blob
+    const buffer: ArrayBuffer = pdfBytes.buffer instanceof ArrayBuffer 
+      ? pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength)
+      : new Uint8Array(pdfBytes).buffer;
+    const blob = new Blob([buffer], { type: 'application/pdf' });
     saveAs(blob, filename);
   }
 

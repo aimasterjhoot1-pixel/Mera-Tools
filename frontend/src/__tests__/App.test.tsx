@@ -10,7 +10,7 @@ describe('App', () => {
         <App />
       </BrowserRouter>
     );
-    expect(screen.getByRole('heading', { name: /mera dost/i })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: /mera tool/i });
+    expect(heading).toBeTruthy();
   });
 });
-

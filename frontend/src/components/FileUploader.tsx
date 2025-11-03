@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { useDropzone } from 'react-dropzone';
+import { useDropzone, FileRejection } from 'react-dropzone';
 import { motion } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -32,10 +32,10 @@ export default function FileUploader({
   const [isDragging, setIsDragging] = useState(false);
 
   const onDrop = useCallback(
-    (acceptedFiles: File[], rejectedFiles: Array<{ file: File; errors: Array<{ code: string; message: string }> }>) => {
+    (acceptedFiles: File[], rejectedFiles: FileRejection[]) => {
       if (rejectedFiles.length > 0) {
         rejectedFiles.forEach(({ file, errors }) => {
-          errors.forEach((error) => {
+          errors.forEach((error: { code: string; message: string }) => {
             if (error.code === 'file-too-large') {
               toast.error(`File ${file.name} is too large. Max size: ${maxSize / 1024 / 1024}MB`);
             } else if (error.code === 'file-invalid-type') {
@@ -100,4 +100,3 @@ export default function FileUploader({
     </div>
   );
 }
-

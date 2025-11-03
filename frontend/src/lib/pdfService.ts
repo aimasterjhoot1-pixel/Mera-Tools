@@ -21,7 +21,11 @@ export async function loadPDFFromBytes(bytes: Uint8Array): Promise<PDFDocument> 
  */
 export async function savePDF(pdfDoc: PDFDocument, filename: string): Promise<void> {
   const pdfBytes = await pdfDoc.save();
-  const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+  // Convert Uint8Array to ArrayBuffer slice for proper Blob creation
+  const buffer: ArrayBuffer = pdfBytes.buffer instanceof ArrayBuffer 
+    ? pdfBytes.buffer.slice(pdfBytes.byteOffset, pdfBytes.byteOffset + pdfBytes.byteLength)
+    : new Uint8Array(pdfBytes).buffer;
+  const blob = new Blob([buffer], { type: 'application/pdf' });
   saveAs(blob, filename);
 }
 
@@ -55,4 +59,3 @@ export async function extractTextFromPDF(file: File): Promise<string> {
 }
 
 export { PDFDocument, PDFPage, PDFFont, rgb, PDFImage };
-

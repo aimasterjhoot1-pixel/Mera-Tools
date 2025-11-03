@@ -74,7 +74,11 @@ export default function Compress() {
         useObjectStreams: selectedQuality === 'low',
       });
 
-      const compressedBlob = new Blob([compressedBytes], { type: 'application/pdf' });
+      // Convert Uint8Array to ArrayBuffer for Blob
+      const buffer: ArrayBuffer = compressedBytes.buffer instanceof ArrayBuffer 
+        ? compressedBytes.buffer.slice(compressedBytes.byteOffset, compressedBytes.byteOffset + compressedBytes.byteLength)
+        : new Uint8Array(compressedBytes).buffer;
+      const compressedBlob = new Blob([buffer], { type: 'application/pdf' });
       setCompressedSize(compressedBlob.size);
 
       // Download
