@@ -4,20 +4,21 @@ test('homepage loads and displays tools', async ({ page }) => {
   await page.goto('/');
 
   // Check title
-  await expect(page).toHaveTitle(/Mera Dost/);
+  await expect(page).toHaveTitle(/Mera Tool/);
 
   // Check main heading
-  await expect(page.getByRole('heading', { name: /Mera Dost/i })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Mera Tool/i })).toBeVisible();
 
   // Check tool links
-  await expect(page.getByRole('link', { name: /Edit PDF/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Convert/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: /Merge/i })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Edit PDF/i }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: /Convert/i }).first()).toBeVisible();
+  await expect(page.getByRole('link', { name: /Merge/i }).first()).toBeVisible();
 });
 
 test('navigates to tool page', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /Edit PDF/i }).click();
+  // Use first() to handle multiple links with same text
+  await page.getByRole('link', { name: /Edit PDF/i }).first().click();
   await expect(page).toHaveURL(/.*\/tools\/edit/);
 });
 

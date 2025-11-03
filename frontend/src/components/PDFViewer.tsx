@@ -9,6 +9,7 @@ import 'pdfjs-dist/web/pdf_viewer.css';
 // @ts-ignore
 import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js?url';
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 interface PDFViewerProps {
@@ -61,7 +62,10 @@ export default function PDFViewer({ source, pageNumber, scale = 1.0, onDocumentL
         if (renderTask) {
           try {
             await renderTask.cancel();
-          } catch {}
+          } catch (error) {
+            // Ignore cancel errors
+            console.debug('Render task cancel error:', error);
+          }
         }
 
         renderTask = page.render(renderContext);
@@ -82,7 +86,10 @@ export default function PDFViewer({ source, pageNumber, scale = 1.0, onDocumentL
       try {
         if (renderTask) renderTask.cancel();
         if (pdfDoc) pdfDoc.destroy();
-      } catch {}
+      } catch (error) {
+        // Ignore cleanup errors
+        console.debug('Cleanup error:', error);
+      }
     };
   }, [source, pageNumber, scale, onDocumentLoaded]);
 
