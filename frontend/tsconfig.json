@@ -26,6 +26,7 @@
     }
   },
   "include": ["src"],
+  "exclude": ["src/__tests__/__mocks__"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
 

@@ -2,14 +2,13 @@ import { describe, it, expect } from '@jest/globals';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 
-// Mock PDFViewer to avoid pdfjs-dist issues in Jest
+// Mock PDFViewer component to avoid pdfjs-dist rendering issues in Jest
 jest.mock('../components/PDFViewer', () => ({
   __esModule: true,
-  default: () => <div>PDF Viewer Mock</div>,
+  default: function PDFViewerMock() {
+    return <div data-testid="pdf-viewer-mock">PDF Viewer Mock</div>;
+  },
 }));
-
-// Mock the CSS import
-jest.mock('pdfjs-dist/web/pdf_viewer.css', () => ({}));
 
 import App from '../App';
 
