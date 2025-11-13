@@ -1,6 +1,15 @@
 import { useState } from 'react';
 import FileUploader, { UploadedFile } from '../../components/FileUploader';
 import toast from 'react-hot-toast';
+import { uploadFile, convertDocument, downloadFile } from '../../services/api';
+import * as pdfjsLib from 'pdfjs-dist';
+// Configure the worker for pdf.js (Vite-friendly)
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js?url';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 // Utilities for client-side conversions
 async function arrayBufferFromFile(file: File): Promise<ArrayBuffer> {
@@ -119,7 +128,7 @@ async function imagesToPdf(files: File[]): Promise<Blob> {
   return pdf.output('blob');
 }
 
-type ConversionType = 'word-to-pdf' | 'pdf-to-word' | 'images-to-pdf' | 'pdf-to-images' | 'html-to-pdf' | 'pdf-to-text';
+type ConversionType = 'word-to-pdf' | 'pdf-to-word' | 'images-to-pdf' | 'pdf-to-images' | 'pdf-to-text';
 
 interface ConversionOption {
   type: ConversionType;
@@ -138,7 +147,7 @@ const conversionOptions: ConversionOption[] = [
   {
     type: 'pdf-to-word',
     label: 'PDF → Word',
-    description: 'Convert PDF to .docx (basic formatting)',
+    description: 'Convert PDF to .docx (server-side)',
     accept: { 'application/pdf': ['.pdf'] },
   },
   {
@@ -154,15 +163,9 @@ const conversionOptions: ConversionOption[] = [
     accept: { 'application/pdf': ['.pdf'] },
   },
   {
-    type: 'html-to-pdf',
-    label: 'HTML → PDF',
-    description: 'Convert HTML file to PDF',
-    accept: { 'text/html': ['.html'] },
-  },
-  {
     type: 'pdf-to-text',
     label: 'PDF → Text',
-    description: 'Extract plain text from PDF',
+    description: 'Extract plain text from PDF (server-side)',
     accept: { 'application/pdf': ['.pdf'] },
   },
 ];
@@ -182,6 +185,46 @@ export default function Convert() {
       setUploadedFiles(files.slice(0, 1));
       toast.success('File loaded');
     }
+  };
+
+  // PDF to Images conversion using pdfjs-dist
+  const pdfToImages = async (file: File): Promise<void> => {
+    const arrayBuffer = await file.arrayBuffer();
+    const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+    const pdf = await loadingTask.promise;
+
+    for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 2.0 });
+
+      // Create canvas
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      if (!context) throw new Error('Canvas context not available');
+
+      canvas.height = viewport.height;
+      canvas.width = viewport.width;
+
+      // Render PDF page to canvas
+      await page.render({
+        canvasContext: context,
+        viewport: viewport,
+      }).promise;
+
+      // Convert canvas to blob and download
+      canvas.toBlob((blob) => {
+        if (blob) {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `${file.name.replace(/\.pdf$/i, '')}_page_${pageNum}.png`;
+          a.click();
+          URL.revokeObjectURL(url);
+        }
+      }, 'image/png');
+    }
+
+    toast.success(`Converted ${pdf.numPages} page(s) to images`);
   };
 
   const handleConvert = async () => {
@@ -205,9 +248,19 @@ export default function Convert() {
           toast.success('Converted Word to PDF');
           break;
         }
-        case 'pdf-to-word':
-          toast.error('PDF to Word conversion requires server-side processing');
+        case 'pdf-to-word': {
+          // Server-side conversion
+          const file = uploadedFiles[0].file;
+          toast.loading('Uploading file...', { id: 'convert' });
+          const uploadResponse = await uploadFile(file);
+          toast.loading('Converting PDF to Word...', { id: 'convert' });
+          const convertResponse = await convertDocument(uploadResponse.fileId, 'pdf-to-word');
+          toast.loading('Downloading...', { id: 'convert' });
+          const filename = file.name.replace(/\.pdf$/i, '.docx');
+          await downloadFile(convertResponse.fileId, filename);
+          toast.success('PDF converted to Word!', { id: 'convert' });
           break;
+        }
         case 'images-to-pdf': {
           const files = uploadedFiles.map((f) => f.file).sort((a, b) => a.name.localeCompare(b.name));
           const blob = await imagesToPdf(files);
@@ -220,18 +273,27 @@ export default function Convert() {
           toast.success('Created PDF from images');
           break;
         }
-        case 'pdf-to-images':
-          toast.error('PDF to images requires pdf.js rendering');
+        case 'pdf-to-images': {
+          const file = uploadedFiles[0].file;
+          await pdfToImages(file);
           break;
-        case 'html-to-pdf':
-          toast.error('HTML to PDF requires headless browser rendering');
+        }
+        case 'pdf-to-text': {
+          // Server-side conversion
+          const file = uploadedFiles[0].file;
+          toast.loading('Uploading file...', { id: 'convert' });
+          const uploadResponse = await uploadFile(file);
+          toast.loading('Extracting text from PDF...', { id: 'convert' });
+          const convertResponse = await convertDocument(uploadResponse.fileId, 'pdf-to-text');
+          toast.loading('Downloading...', { id: 'convert' });
+          const filename = file.name.replace(/\.pdf$/i, '.txt');
+          await downloadFile(convertResponse.fileId, filename);
+          toast.success('Text extracted from PDF!', { id: 'convert' });
           break;
-        case 'pdf-to-text':
-          toast.error('PDF text extraction requires pdf.js or OCR');
-          break;
+        }
       }
     } catch (error) {
-      toast.error(`Conversion error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(`Conversion error: ${error instanceof Error ? error.message : 'Unknown error'}`, { id: 'convert' });
     } finally {
       setProcessing(false);
     }
@@ -245,7 +307,7 @@ export default function Convert() {
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Convert Documents</h1>
           <p className="text-gray-600">
-            Convert between PDF, Word, PowerPoint, images, HTML, and text formats.
+            Convert between PDF, Word, images, and text formats.
           </p>
         </div>
 
@@ -315,11 +377,6 @@ export default function Convert() {
           </div>
         )}
 
-        {selectedType && (
-          <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-            <strong>Note:</strong> Some conversions may require server-side processing. Word → PDF and Images → PDF are performed in your browser.
-          </div>
-        )}
       </div>
     </div>
   );

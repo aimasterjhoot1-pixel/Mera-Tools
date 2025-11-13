@@ -1,12 +1,20 @@
 import { useState } from 'react';
 import FileUploader, { UploadedFile } from '../../components/FileUploader';
 import toast from 'react-hot-toast';
+import * as pdfjsLib from 'pdfjs-dist';
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js?url';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+(pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 export default function OCR() {
   const [uploadedFile, setUploadedFile] = useState<UploadedFile | null>(null);
   const [processing, setProcessing] = useState(false);
   const [extractedText, setExtractedText] = useState<string>('');
   const [language, setLanguage] = useState('eng');
+  const [progress, setProgress] = useState({ status: '', progress: 0 });
 
   const handleFileSelect = async (files: UploadedFile[]) => {
     if (files.length === 0) return;
@@ -15,29 +23,93 @@ export default function OCR() {
     toast.success('File loaded');
   };
 
+  // Convert PDF page to image
+  const pdfPageToImage = async (pdf: any, pageNum: number): Promise<string> => {
+    const page = await pdf.getPage(pageNum);
+    const viewport = page.getViewport({ scale: 2.0 });
+
+    // Create canvas
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Canvas context not available');
+
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+
+    // Render PDF page to canvas
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+    }).promise;
+
+    // Convert canvas to data URL
+    return canvas.toDataURL('image/png');
+  };
+
   const handleOCR = async () => {
     if (!uploadedFile) return;
 
     setProcessing(true);
     setExtractedText('');
+    setProgress({ status: 'Initializing OCR...', progress: 0 });
     
     try {
       // Load Tesseract.js
       const { createWorker } = await import('tesseract.js');
+      setProgress({ status: 'Loading OCR engine...', progress: 10 });
       const worker = await createWorker(language);
+      setProgress({ status: 'OCR engine loaded', progress: 20 });
 
-      // Perform OCR
-      const { data: { text } } = await worker.recognize(uploadedFile.file);
-      
-      setExtractedText(text);
+      let fullText = '';
+      const file = uploadedFile.file;
+
+      // Check if file is PDF
+      if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+        setProgress({ status: 'Processing PDF...', progress: 30 });
+        
+        // Convert PDF to images
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
+        const pdf = await loadingTask.promise;
+        const numPages = pdf.numPages;
+
+        setProgress({ status: `Processing ${numPages} page(s)...`, progress: 40 });
+
+        // Process each page
+        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+          setProgress({ 
+            status: `Processing page ${pageNum} of ${numPages}...`, 
+            progress: 40 + (pageNum / numPages) * 50 
+          });
+
+          // Convert PDF page to image
+          const imageDataUrl = await pdfPageToImage(pdf, pageNum);
+          
+          // Perform OCR on the image
+          const { data: { text } } = await worker.recognize(imageDataUrl);
+          
+          fullText += `\n\n--- Page ${pageNum} ---\n\n${text}`;
+        }
+      } else {
+        // Process image directly
+        setProgress({ status: 'Processing image...', progress: 50 });
+        const { data: { text } } = await worker.recognize(file);
+        fullText = text;
+      }
+
+      setProgress({ status: 'Finalizing...', progress: 90 });
+      setExtractedText(fullText.trim());
       await worker.terminate();
       
+      setProgress({ status: 'Complete!', progress: 100 });
       toast.success('Text extracted successfully!');
     } catch (error) {
       toast.error(`OCR error: ${error instanceof Error ? error.message : 'Unknown error'}`);
       console.error('OCR error:', error);
+      setProgress({ status: 'Error occurred', progress: 0 });
     } finally {
       setProcessing(false);
+      setTimeout(() => setProgress({ status: '', progress: 0 }), 2000);
     }
   };
 
@@ -148,21 +220,31 @@ export default function OCR() {
 
             {processing && (
               <div className="card bg-blue-50 border border-blue-200">
-                <div className="flex items-center space-x-3">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-                  <div>
-                    <p className="font-medium text-blue-900">Processing...</p>
-                    <p className="text-sm text-blue-700">
-                      This may take a minute for large files. OCR runs in your browser.
-                    </p>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
+                    <div className="flex-1">
+                      <p className="font-medium text-blue-900">{progress.status || 'Processing...'}</p>
+                      <p className="text-sm text-blue-700">
+                        This may take a minute for large files. OCR runs in your browser.
+                      </p>
+                    </div>
                   </div>
+                  {progress.progress > 0 && (
+                    <div className="w-full bg-blue-200 rounded-full h-2">
+                      <div
+                        className="bg-primary-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${progress.progress}%` }}
+                      ></div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-sm text-yellow-800">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
               <strong>Note:</strong> OCR processing happens entirely in your browser using Tesseract.js.
-              For very large files or better accuracy, consider using server-side OCR processing.
+              PDF files are automatically converted to images before processing. For best results, use high-quality scanned documents.
             </div>
           </div>
         )}
