@@ -21,7 +21,13 @@ class ConvertService {
       const page = await pdf.getPage(i);
       const textContent = await page.getTextContent();
       const pageText = textContent.items
-        .map((item: any) => ('str' in item ? item.str : ''))
+        .map((item) => {
+          // Check if item has 'str' property (TextItem type)
+          if ('str' in item && typeof item.str === 'string') {
+            return item.str;
+          }
+          return '';
+        })
         .join(' ');
       fullText += `Page ${i}:\n${pageText}\n\n`;
     }
