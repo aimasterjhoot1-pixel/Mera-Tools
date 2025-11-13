@@ -2,6 +2,9 @@ import { describe, it, expect } from '@jest/globals';
 import { render, screen } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 
+// Mock api service to avoid import.meta.env issues in Jest
+jest.mock('../services/api');
+
 // Mock PDFViewer component to avoid pdfjs-dist rendering issues in Jest
 jest.mock('../components/PDFViewer', () => ({
   __esModule: true,

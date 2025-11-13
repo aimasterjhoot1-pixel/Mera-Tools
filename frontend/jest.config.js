@@ -9,14 +9,20 @@ export default {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: {
         esModuleInterop: true,
+        target: 'ES2020',
       },
+      isolatedModules: false,
     }],
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(.*\\.mjs$))',
+  ],
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/src/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '^pdfjs-dist/web/pdf_viewer\\.css$': '<rootDir>/src/__tests__/__mocks__/pdfjs-dist-web-pdf_viewer.css.js',
     '^pdfjs-dist$': '<rootDir>/src/__tests__/__mocks__/pdfjs-dist.js',
+    '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
   collectCoverageFrom: [
