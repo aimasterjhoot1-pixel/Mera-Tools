@@ -22,6 +22,7 @@ export default {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '^pdfjs-dist/web/pdf_viewer\\.css$': '<rootDir>/src/__tests__/__mocks__/pdfjs-dist-web-pdf_viewer.css.js',
     '^pdfjs-dist$': '<rootDir>/src/__tests__/__mocks__/pdfjs-dist.js',
+    '^pdfjs-dist/build/pdf\\.worker\\.min\\.js\\?url$': '<rootDir>/src/__tests__/__mocks__/pdfjs-worker.js',
     '^(\\.{1,2}/.*)\\.js$': '$1',
   },
   setupFilesAfterEnv: ['<rootDir>/src/setupTests.ts'],
