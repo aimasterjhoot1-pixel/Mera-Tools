@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import FileUploader, { UploadedFile } from '../../components/FileUploader';
-import { PDFDocument, rgb } from '../../lib/pdfService';
+import { PDFDocument } from '../../lib/pdfService';
 import { savePDF } from '../../lib/pdfService';
 import toast from 'react-hot-toast';
 import PDFViewer from '../../components/PDFViewer';
@@ -13,15 +13,6 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.js?url';
 (pdfjsLib as any).GlobalWorkerOptions.workerSrc = pdfjsWorker;
 
 type SignatureType = 'draw' | 'type' | 'upload' | 'extract';
-type SignatureStyle = 'cursive' | 'formal' | 'elegant' | 'bold' | 'script';
-
-interface SignaturePosition {
-  page: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
 
 interface DraggableSignature {
   id: string;
@@ -40,14 +31,12 @@ export default function SignAnnotate() {
   const [signatureImage, setSignatureImage] = useState<string | null>(null);
   const [signatureStyles, setSignatureStyles] = useState<string[]>([]);
   const [selectedStyle, setSelectedStyle] = useState<number>(-1);
-  const [canvasRef, setCanvasRef] = useState<HTMLCanvasElement | null>(null);
   const [drawingCanvasRef, setDrawingCanvasRef] = useState<HTMLCanvasElement | null>(null);
-  const [pdfCanvasRef, setPdfCanvasRef] = useState<HTMLCanvasElement | null>(null);
+  const [pdfCanvasRef, setPdfCanvasRef] = useState<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
-  const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [placedSignatures, setPlacedSignatures] = useState<DraggableSignature[]>([]);
   const [selectedSignature, setSelectedSignature] = useState<DraggableSignature | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -119,7 +108,7 @@ export default function SignAnnotate() {
   }, []);
 
   // Extract signature from image (basic implementation - finds white/transparent background)
-  const extractSignatureFromImage = useCallback((imageData: string): string => {
+  const extractSignatureFromImage = useCallback((imageData: string): Promise<string> => {
     return new Promise<string>((resolve) => {
       const img = new Image();
       img.onload = () => {
@@ -200,7 +189,6 @@ export default function SignAnnotate() {
       const arrayBuffer = await files[0].file.arrayBuffer();
       const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
       const pdf = await loadingTask.promise;
-      setPdfDoc(pdf);
       setNumPages(pdf.numPages);
       setCurrentPage(1);
       toast.success('PDF loaded');
@@ -365,7 +353,7 @@ export default function SignAnnotate() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging || !selectedSignature || !pdfCanvasRef) return;
 
-      const container = pdfCanvasRef as HTMLElement;
+      const container = pdfCanvasRef;
       const rect = container.getBoundingClientRect();
       const x = Math.max(0, (e.clientX - rect.left - dragStart.x) / scale);
       const y = Math.max(0, (e.clientY - rect.top - dragStart.y) / scale);
@@ -421,7 +409,7 @@ export default function SignAnnotate() {
         if (pageNum < 0 || pageNum >= pdf.getPageCount()) continue;
 
         const page = pdf.getPage(pageNum);
-        const pageHeight = page.getHeight();
+        const { width: pageWidth, height: pageHeight } = page.getSize();
 
         for (const sig of sigs) {
           try {
@@ -437,7 +425,6 @@ export default function SignAnnotate() {
             }
 
             // Get PDF page dimensions to scale coordinates properly
-            const { width: pageWidth, height: pageHeight } = page.getSize();
             
             // Get actual rendered canvas dimensions from PDF viewer
             // We need to map viewer coordinates to PDF coordinates
@@ -677,7 +664,7 @@ export default function SignAnnotate() {
                   <div className="relative bg-gray-100 rounded-lg overflow-auto" style={{ minHeight: '600px' }}>
                     {uploadedFile && (
                       <div className="relative inline-block">
-                        <div ref={(ref) => setPdfCanvasRef(ref as any)}>
+                        <div ref={(ref) => setPdfCanvasRef(ref)}>
                           <PDFViewer
                             source={uploadedFile.file}
                             pageNumber={currentPage}

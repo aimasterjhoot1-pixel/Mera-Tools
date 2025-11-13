@@ -24,7 +24,7 @@ export default function OCR() {
   };
 
   // Convert PDF page to image
-  const pdfPageToImage = async (pdf: any, pageNum: number): Promise<string> => {
+  const pdfPageToImage = async (pdf: pdfjsLib.PDFDocumentProxy, pageNum: number): Promise<string> => {
     const page = await pdf.getPage(pageNum);
     const viewport = page.getViewport({ scale: 2.0 });
 
